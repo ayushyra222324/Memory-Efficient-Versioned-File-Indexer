@@ -1,102 +1,180 @@
-# Memory-Efficient Versioned File Indexer
+# Memory-Efficient Versioned File Indexer Using C++
 
-## Setup Instructions
+## 1. Introduction / Problem Overview
 
-Follow the steps below to compile and run the program.
+The goal of this assignment is to design and implement a **memory-efficient file indexing system** in C++.
 
----
+The system reads a large text file using a fixed-size buffer and builds a **word-level index** that stores the frequency of each word. The index allows users to perform analytical queries such as:
 
-## Step 1: Create a Project Folder
+- Word frequency lookup
+- Top-K most frequent words
+- Frequency difference of a word between two file versions
 
-Create a folder and place the following three files inside it:
-
-
-project_folder/
-│
-├── 240242_Ayush.cpp
-├── test_logs.txt
-└── verbose_logs.txt
-
-
-### File Description
-
-- **240242_Ayush.cpp**  
-  Contains the complete C++ source code for the program.
-
-- **test_logs.txt**  
-  A smaller dataset used for basic testing.
-
-- **verbose_logs.txt**  
-  A larger dataset used to test the program on larger log files.
+The program is designed using **object-oriented programming principles** and demonstrates concepts such as inheritance, polymorphism, templates, and exception handling.
 
 ---
 
-## Step 2: Compile the Program
+## 2. Design and Approach
 
-Open the **Git Bash / terminal** in the project folder and run the following command:
+The overall approach followed in this implementation consists of the following steps:
 
-
-g++ -std=c++17 240242_Ayush.cpp -o analyzer
-
-
-This command compiles the source code and generates an executable file named:
-
-
-analyzer
-
+1. The program reads the input file incrementally using a **fixed-size buffer**.
+2. The buffer contents are passed to a **tokenizer** which extracts valid words.
+3. Words are converted to **lowercase** to ensure case-insensitive indexing.
+4. Each extracted word is inserted into a **hash map** that maintains the frequency count.
+5. Separate indexes are maintained for each **version of the file**.
+6. Once the index is constructed, the program executes the requested query.
 
 ---
 
-## Step 3: Run the Program
+## 3. Description of Classes Used
 
-After compilation, the program can be executed using the required command-line arguments.
+The system is implemented using several classes, each with a well-defined responsibility.
 
-Example:
+### 3.1 BufferedFileReader
 
+This class is responsible for reading the file using a **fixed-size buffer**.
 
-./analyzer --file test_logs.txt --version v1 --buffer 512 --query word --word error
+#### Responsibilities
 
+- Open the file safely
+- Read data in chunks using a buffer
+- Return chunks of data to the tokenizer
 
----
-
-## Supported Queries
-
-### 1. Word Frequency Query
-
-Returns the frequency of a given word in a specific version.
-
-
-./analyzer --file test_logs.txt --version v1 --buffer 512 --query word --word error
-
+This ensures that the entire file is **never loaded into memory at once**, satisfying the memory efficiency requirement.
 
 ---
 
-### 2. Top-K Frequent Words Query
+### 3.2 Tokenizer
 
-Displays the top K most frequent words in a version.
+The tokenizer processes chunks of text received from the buffered reader.
 
+#### Responsibilities
 
-./analyzer --file test_logs.txt --version v1 --buffer 512 --query top --top 10
+- Extract words consisting of **alphanumeric characters**
+- Convert words to **lowercase**
+- Handle words that may be **split across buffer boundaries**
 
-
----
-
-### 3. Difference Query
-
-Computes the difference in frequency of a word between two versions.
-
-
-./analyzer --file1 test_logs.txt --version1 v1
---file2 verbose_logs.txt --version2 v2
---buffer 512 --query diff --word error
-
+It also stores incomplete tokens temporarily and combines them with the next buffer.
 
 ---
 
-## Notes
+### 3.3 VersionIndex
 
-- The buffer size must be between **256 KB and 1024 KB**.
-- Word matching is **case-insensitive**.
-- The program reads files using a **fixed-size buffer**, ensuring memory usage does not depend on file size.
+This class stores the **word frequency index for a specific version** of the file.
+
+#### Responsibilities
+
+- Store words and their frequencies using an `unordered_map`
+- Provide functions to:
+  - Add words to the index
+  - Retrieve word counts
+  - Compute the top-K frequent words
+
+Function overloading is demonstrated through multiple `getCount()` functions.
 
 ---
+
+### 3.4 IndexManager
+
+This class manages **multiple file versions**.
+
+#### Responsibilities
+
+- Create indexes for different versions
+- Store and retrieve version-specific indexes
+
+This allows the system to support **difference queries between versions**.
+
+---
+
+### 3.5 QueryProcessor (Abstract Base Class)
+
+`QueryProcessor` is an **abstract base class** used to implement polymorphism.
+
+#### Responsibilities
+
+- Define a virtual function `execute()` for executing queries
+
+#### Derived Classes
+
+- **WordQuery** – retrieves the frequency of a given word
+- **DiffQuery** – computes the difference of a word’s frequency between two versions
+- **TopKQuery** – displays the top-K most frequent words
+
+Runtime polymorphism is demonstrated through dynamic dispatch of the `execute()` function.
+
+---
+
+## 4. Fixed-Size Buffer File Processing
+
+The file is processed using a **fixed-size buffer**, whose size is specified via the command-line argument.
+
+### Buffer Size Constraints
+
+- Minimum: **256 KB**
+- Maximum: **1024 KB**
+
+### Processing Flow
+
+1. The `BufferedFileReader` reads a chunk of data into the buffer.
+2. The chunk is passed to the tokenizer.
+3. The tokenizer extracts words and sends them to the index.
+4. The process repeats until the entire file is processed.
+
+Special care is taken to handle **tokens that span across buffer boundaries**, ensuring that words are not incorrectly split.
+
+This approach guarantees that **memory usage remains independent of the file size**.
+
+---
+
+## 5. Query Execution
+
+After building the index, the system supports the following queries:
+
+### Word Count Query
+
+Returns the frequency of a given word in a specified version.
+
+### Difference Query
+
+Compares two versions and returns the difference in the frequency of a word.
+
+### Top-K Query
+
+Displays the top K most frequent words in a version, sorted by frequency.
+
+Execution time is measured using the C++ `chrono` library.
+
+---
+
+## 6. Use of C++ Features
+
+This implementation demonstrates several important C++ concepts:
+
+| Feature | Implementation |
+|----------|---------------|
+| Object-Oriented Design | Modular classes with clear responsibilities |
+| Inheritance | Query classes derived from `QueryProcessor` |
+| Runtime Polymorphism | Virtual `execute()` function |
+| Templates | Generic function used for printing results |
+| Function Overloading | Multiple versions of `getCount()` |
+| Exception Handling | `try`, `catch`, and `throw` used for error handling |
+| STL Containers | `unordered_map`, `vector`, `priority_queue` |
+
+---
+
+## 7. Assumptions and Observations
+
+### Assumptions
+
+- Words are defined as continuous sequences of alphanumeric characters.
+- Word matching is case-insensitive.
+- Memory usage grows only with the number of unique words, not file size.
+- The input dataset is assumed to be a valid text file.
+
+### Observations
+
+- The use of `unordered_map` allows efficient word frequency lookup.
+- Fixed-size buffer reading ensures scalability for large files.
+- Object-oriented design makes the system modular and extensible.
